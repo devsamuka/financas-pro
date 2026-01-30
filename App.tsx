@@ -225,6 +225,11 @@ const App: React.FC = () => {
     );
   }
 
+  // Helper para obter o nome do usuário
+  const getUserName = () => {
+    return session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0];
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 p-6 fixed h-full shadow-sm">
@@ -242,11 +247,11 @@ const App: React.FC = () => {
         <div className="pt-6 border-t border-slate-100 mt-auto">
           <div className="flex items-center gap-3 mb-4 p-2 bg-slate-50 rounded-xl overflow-hidden">
             <div className="w-10 h-10 min-w-[40px] rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
-              {session.user.email?.[0].toUpperCase()}
+              {getUserName()[0].toUpperCase()}
             </div>
             <div className="truncate">
               <p className="text-xs text-slate-400 font-medium">Logado como:</p>
-              <p className="text-sm font-bold text-slate-800 truncate">{session.user.email}</p>
+              <p className="text-sm font-bold text-slate-800 truncate">{getUserName()}</p>
             </div>
           </div>
           <button onClick={handleLogout} className="flex items-center space-x-3 w-full px-4 py-2 text-rose-500 hover:bg-rose-50 rounded-lg font-medium transition-colors">
