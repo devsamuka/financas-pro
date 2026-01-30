@@ -7,7 +7,6 @@ import {
   Wallet,
   Calendar,
   Target,
-  // Fix: Added missing TrendingUp import
   TrendingUp
 } from 'lucide-react';
 import { 
@@ -20,7 +19,8 @@ import {
   ResponsiveContainer, 
   Cell,
   PieChart,
-  Pie
+  Pie,
+  Legend
 } from 'recharts';
 import { Transaction, Category, FinancialGoal, FinancialSummary } from '../types';
 import { formatCurrency, calculateProgress, getDaysRemaining } from '../utils';
@@ -54,16 +54,26 @@ const Dashboard: React.FC<Props> = ({ transactions, categories, goals }) => {
   }, [transactions]);
 
   const pieData = useMemo(() => {
-    const expensesByCategory: Record<string, number> = {};
+    const expensesByCategory: Record<string, { amount: number, color: string }> = {};
+    
     transactions
       .filter(t => t.type === 'EXPENSE')
       .forEach(t => {
         const cat = categories.find(c => c.id === t.categoryId);
         const name = cat ? cat.name : 'Outros';
-        expensesByCategory[name] = (expensesByCategory[name] || 0) + t.amount;
+        const color = cat ? cat.color : '#cbd5e1';
+        
+        if (!expensesByCategory[name]) {
+          expensesByCategory[name] = { amount: 0, color: color };
+        }
+        expensesByCategory[name].amount += t.amount;
       });
     
-    return Object.entries(expensesByCategory).map(([name, value]) => ({ name, value }));
+    return Object.entries(expensesByCategory).map(([name, data]) => ({ 
+      name, 
+      value: data.amount,
+      color: data.color 
+    }));
   }, [transactions, categories]);
 
   const barData = useMemo(() => {
@@ -115,7 +125,6 @@ const Dashboard: React.FC<Props> = ({ transactions, categories, goals }) => {
               <TrendingUp size={20} className="text-indigo-600" />
               Comparativo Financeiro
             </h3>
-            {/* Altura fixa e overflow hidden para evitar erros de cálculo do ResponsiveContainer */}
             <div className="h-[300px] w-full relative overflow-hidden min-h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -125,6 +134,7 @@ const Dashboard: React.FC<Props> = ({ transactions, categories, goals }) => {
                   <Tooltip 
                     cursor={{fill: '#f8fafc'}}
                     contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}}
+                    formatter={(value: number) => [formatCurrency(value), 'Valor']}
                   />
                   <Bar dataKey="valor" radius={[6, 6, 0, 0]} barSize={60}>
                     {barData.map((entry, index) => (
@@ -164,7 +174,7 @@ const Dashboard: React.FC<Props> = ({ transactions, categories, goals }) => {
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <h3 className="text-lg font-bold text-slate-800 mb-4">Despesas p/ Categoria</h3>
-            <div className="h-[220px] w-full relative overflow-hidden min-h-[220px]">
+            <div className="h-[260px] w-full relative overflow-hidden min-h-[260px]">
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -174,18 +184,22 @@ const Dashboard: React.FC<Props> = ({ transactions, categories, goals }) => {
                       outerRadius={80}
                       paddingAngle={5}
                       dataKey="value"
+                      stroke="none"
                     >
-                      {pieData.map((entry, index) => {
-                        const cat = categories.find(c => c.name === entry.name);
-                        return <Cell key={`cell-${index}`} fill={cat?.color || '#cbd5e1'} />;
-                      })}
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip 
+                      formatter={(value: number) => [formatCurrency(value), 'Gasto']}
+                      contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'}}
+                    />
+                    <Legend verticalAlign="bottom" height={36}/>
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="h-full flex items-center justify-center text-slate-400 italic text-sm">
-                  Sem dados para exibir
+                  Sem despesas lançadas
                 </div>
               )}
             </div>
