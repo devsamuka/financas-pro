@@ -11,6 +11,7 @@ type AuthMode = 'login' | 'register';
 
 const Login: React.FC<Props> = ({ onLogin }) => {
   const [mode, setMode] = useState<AuthMode>('login');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -39,12 +40,17 @@ const Login: React.FC<Props> = ({ onLogin }) => {
         const { error: regError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              full_name: fullName,
+            }
+          }
         });
 
         if (regError) {
           setError('Erro ao criar conta: ' + regError.message);
         } else {
-          setSuccess('Conta criada! Verifique seu email para confirmar o cadastro (se habilitado) ou tente logar.');
+          setSuccess('Conta criada! Verifique seu email para confirmar o cadastro ou tente realizar o login.');
           setMode('login');
         }
       }
@@ -83,6 +89,20 @@ const Login: React.FC<Props> = ({ onLogin }) => {
 
         <form onSubmit={handleAuth} className="space-y-4">
           <div className="space-y-3">
+            {mode === 'register' && (
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Seu nome completo"
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm text-slate-900"
+                  required={mode === 'register'}
+                />
+              </div>
+            )}
+            
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
