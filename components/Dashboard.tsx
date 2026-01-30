@@ -61,7 +61,7 @@ const Dashboard: React.FC<Props> = ({ transactions, categories, goals }) => {
       .forEach(t => {
         const cat = categories.find(c => c.id === t.categoryId);
         const name = cat ? cat.name : 'Outros';
-        const color = cat ? cat.color : '#cbd5e1';
+        const color = cat ? cat.color : '#cbd5e1'; // Fallback se não encontrar categoria
         
         if (!expensesByCategory[name]) {
           expensesByCategory[name] = { amount: 0, color: color };
