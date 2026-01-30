@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Target, 
@@ -14,7 +14,7 @@ import {
   LogOut,
   AlertCircle
 } from 'lucide-react';
-import { Transaction, Category, FinancialGoal, TransactionType, ExpenseNature, AppUser } from './types';
+import { Transaction, Category, FinancialGoal, TransactionType, ExpenseNature } from './types';
 import { INITIAL_CATEGORIES } from './constants';
 import { supabase } from './lib/supabase';
 import Dashboard from './components/Dashboard';
@@ -28,7 +28,7 @@ import Login from './components/Login';
 type View = 'dashboard' | 'transactions' | 'goals' | 'categories' | 'users';
 
 const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [session, setSession] = useState<any>(null);
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -38,28 +38,21 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
 
+  // Listener oficial do Supabase Auth
   useEffect(() => {
-    try {
-      const savedUser = sessionStorage.getItem('finpro_user');
-      if (savedUser && savedUser !== 'undefined') {
-        const parsed = JSON.parse(savedUser);
-        if (parsed && parsed.id) {
-          setCurrentUser(parsed);
-        }
-      }
-    } catch (e) {
-      sessionStorage.removeItem('finpro_user');
-    }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const handleLogin = (user: AppUser) => {
-    setCurrentUser(user);
-    sessionStorage.setItem('finpro_user', JSON.stringify(user));
-  };
-
-  const handleLogout = () => {
-    setCurrentUser(null);
-    sessionStorage.removeItem('finpro_user');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setActiveView('dashboard');
   };
 
@@ -82,7 +75,7 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    if (!currentUser) {
+    if (!session?.user) {
       setIsLoading(false);
       return;
     }
@@ -91,42 +84,41 @@ const App: React.FC = () => {
       setIsLoading(true);
       setInitError(null);
       try {
+        // Agora o RLS garante que só pegamos os dados do usuário atual
         const [transRes, catsRes, goalsRes] = await Promise.all([
           supabase.from('transactions').select('*').order('date', { ascending: false }),
           supabase.from('categories').select('*'),
           supabase.from('goals').select('*')
         ]);
 
-        if (transRes.error && transRes.error.code === 'PGRST104') {
-          throw new Error("Banco de dados não inicializado.");
-        }
-
+        if (transRes.error) throw transRes.error;
         if (transRes.data) setTransactions(transRes.data.map(mapTransaction));
         
         if (catsRes.data && catsRes.data.length > 0) {
           setCategories(catsRes.data);
         } else {
-          const { data: inserted } = await supabase.from('categories').insert(INITIAL_CATEGORIES).select();
+          // Se não houver categorias, semeamos as iniciais vinculadas a este usuário
+          const categoriesToInsert = INITIAL_CATEGORIES.map(cat => ({
+            ...cat,
+            user_id: session.user.id
+          }));
+          const { data: inserted } = await supabase.from('categories').insert(categoriesToInsert).select();
           if (inserted) setCategories(inserted);
         }
 
         if (goalsRes.data) setGoals(goalsRes.data.map(mapGoal));
       } catch (error: any) {
-        setInitError(error.message || "Erro de conexão.");
+        console.error("Erro ao carregar dados:", error);
+        setInitError(error.message || "Erro de conexão com o servidor.");
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [currentUser]);
+  }, [session]);
 
   const addTransaction = async (t: Omit<Transaction, 'id'>) => {
-    if (!t.categoryId || t.categoryId.length < 10) {
-      alert("Erro: Categoria inválida. Por favor, recarregue as categorias.");
-      return;
-    }
-
     try {
       const payload: any = {
         description: t.description,
@@ -134,6 +126,7 @@ const App: React.FC = () => {
         date: t.date,
         type: t.type,
         category_id: t.categoryId,
+        user_id: session.user.id // Vincula explicitamente
       };
 
       if (t.type === 'EXPENSE' && t.nature) {
@@ -159,8 +152,9 @@ const App: React.FC = () => {
   };
 
   const addCategory = async (c: Omit<Category, 'id'>) => {
-    const { data, error } = await supabase.from('categories').insert([c]).select();
+    const { data, error } = await supabase.from('categories').insert([{ ...c, user_id: session.user.id }]).select();
     if (data) setCategories(prev => [...prev, data[0]]);
+    if (error) alert(error.message);
   };
 
   const deleteCategory = async (id: string) => {
@@ -173,7 +167,8 @@ const App: React.FC = () => {
       name: g.name,
       target_amount: g.targetAmount,
       current_amount: g.currentAmount,
-      deadline: g.deadline
+      deadline: g.deadline,
+      user_id: session.user.id
     };
     const { data } = await supabase.from('goals').insert([payload]).select();
     if (data) setGoals(prev => [...prev, mapGoal(data[0])]);
@@ -197,7 +192,7 @@ const App: React.FC = () => {
       onClick={() => { setActiveView(view); setIsMobileMenuOpen(false); }}
       className={`flex items-center space-x-3 w-full px-4 py-3 rounded-lg transition-all ${
         activeView === view 
-          ? 'bg-indigo-600 text-white shadow-lg' 
+          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' 
           : 'text-slate-600 hover:bg-indigo-50 hover:text-indigo-600'
       }`}
     >
@@ -206,13 +201,13 @@ const App: React.FC = () => {
     </button>
   );
 
-  if (!currentUser) return <Login onLogin={handleLogin} />;
+  if (!session) return <Login onLogin={() => {}} />;
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
         <Loader2 className="animate-spin text-indigo-600 mb-4" size={48} />
-        <p className="text-slate-600 font-medium">Sincronizando dados...</p>
+        <p className="text-slate-600 font-medium">Autenticando e carregando dados...</p>
       </div>
     );
   }
@@ -222,9 +217,9 @@ const App: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6 text-center">
         <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md border border-rose-100">
           <AlertCircle className="mx-auto text-rose-500 mb-4" size={64} />
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Erro de Inicialização</h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Erro de Segurança</h2>
           <p className="text-slate-600 mb-6">{initError}</p>
-          <button onClick={() => window.location.reload()} className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700">Recarregar</button>
+          <button onClick={() => window.location.reload()} className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700">Tentar Novamente</button>
         </div>
       </div>
     );
@@ -232,7 +227,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 p-6 fixed h-full">
+      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 p-6 fixed h-full shadow-sm">
         <div className="flex items-center space-x-2 text-indigo-600 mb-8">
           <Wallet size={32} />
           <h1 className="text-xl font-bold tracking-tight">FinançasPro</h1>
@@ -242,16 +237,16 @@ const App: React.FC = () => {
           <NavigationItem view="transactions" label="Transações" icon={TrendingUp} />
           <NavigationItem view="goals" label="Metas" icon={Target} />
           <NavigationItem view="categories" label="Categorias" icon={Settings} />
-          <NavigationItem view="users" label="Usuários" icon={Users} />
+          <NavigationItem view="users" label="Meu Perfil" icon={Users} />
         </nav>
         <div className="pt-6 border-t border-slate-100 mt-auto">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
-              {currentUser.username?.[0].toUpperCase()}
+          <div className="flex items-center gap-3 mb-4 p-2 bg-slate-50 rounded-xl overflow-hidden">
+            <div className="w-10 h-10 min-w-[40px] rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
+              {session.user.email?.[0].toUpperCase()}
             </div>
             <div className="truncate">
-              <p className="text-sm font-bold text-slate-800 truncate">{currentUser.full_name}</p>
-              <p className="text-xs text-slate-500 truncate">@{currentUser.username}</p>
+              <p className="text-xs text-slate-400 font-medium">Logado como:</p>
+              <p className="text-sm font-bold text-slate-800 truncate">{session.user.email}</p>
             </div>
           </div>
           <button onClick={handleLogout} className="flex items-center space-x-3 w-full px-4 py-2 text-rose-500 hover:bg-rose-50 rounded-lg font-medium transition-colors">
@@ -278,9 +273,11 @@ const App: React.FC = () => {
             <NavigationItem view="transactions" label="Transações" icon={TrendingUp} />
             <NavigationItem view="goals" label="Metas" icon={Target} />
             <NavigationItem view="categories" label="Categorias" icon={Settings} />
-            <NavigationItem view="users" label="Usuários" icon={Users} />
+            <NavigationItem view="users" label="Meu Perfil" icon={Users} />
           </nav>
-          <button onClick={handleLogout} className="mt-auto mb-10 py-3 bg-rose-50 text-rose-500 rounded-xl font-bold">Sair</button>
+          <button onClick={handleLogout} className="mt-auto mb-10 py-3 bg-rose-50 text-rose-500 rounded-xl font-bold flex items-center justify-center gap-2">
+            <LogOut size={20} /> Sair
+          </button>
         </div>
       )}
 
@@ -293,20 +290,22 @@ const App: React.FC = () => {
                 {activeView === 'transactions' && 'Transações'}
                 {activeView === 'goals' && 'Metas'}
                 {activeView === 'categories' && 'Categorias'}
-                {activeView === 'users' && 'Usuários'}
+                {activeView === 'users' && 'Meu Perfil'}
               </h2>
             </div>
-            <button onClick={() => setShowTransactionForm(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg hover:bg-indigo-700">
-              <Plus size={20} />
-              <span className="hidden sm:inline">Novo Lançamento</span>
-            </button>
+            {activeView !== 'users' && (
+              <button onClick={() => setShowTransactionForm(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg hover:bg-indigo-700 transition-all active:scale-95">
+                <Plus size={20} />
+                <span className="hidden sm:inline">Novo Lançamento</span>
+              </button>
+            )}
           </div>
 
           {activeView === 'dashboard' && <Dashboard transactions={transactions} categories={categories} goals={goals} />}
           {activeView === 'transactions' && <TransactionList transactions={transactions} categories={categories} onDelete={deleteTransaction} />}
           {activeView === 'goals' && <GoalManager goals={goals} onAdd={addGoal} onDelete={deleteGoal} onUpdateProgress={updateGoalProgress} />}
           {activeView === 'categories' && <CategoryManager categories={categories} onAdd={addCategory} onDelete={deleteCategory} />}
-          {activeView === 'users' && <UserManagement />}
+          {activeView === 'users' && <UserManagement user={session.user} />}
         </div>
       </main>
 
