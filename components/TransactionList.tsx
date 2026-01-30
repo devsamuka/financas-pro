@@ -35,35 +35,30 @@ const TransactionList: React.FC<Props> = ({ transactions, categories, onDelete }
         </div>
         
         <div className="flex items-center space-x-2">
-          <button 
-            onClick={() => setFilterType('ALL')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterType === 'ALL' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
-          >
-            Todos
-          </button>
-          <button 
-            onClick={() => setFilterType('INCOME')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterType === 'INCOME' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
-          >
-            Entradas
-          </button>
-          <button 
-            onClick={() => setFilterType('EXPENSE')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterType === 'EXPENSE' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
-          >
-            Saídas
-          </button>
+          {['ALL', 'INCOME', 'EXPENSE'].map((f) => (
+             <button 
+                key={f}
+                onClick={() => setFilterType(f as any)}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  filterType === f 
+                  ? 'bg-slate-900 text-white shadow-md' 
+                  : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                {f === 'ALL' ? 'Todos' : f === 'INCOME' ? 'Entradas' : 'Saídas'}
+              </button>
+          ))}
         </div>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead>
-            <tr className="bg-slate-50/50 text-slate-500 text-xs font-bold uppercase tracking-wider">
+            <tr className="bg-slate-50/50 text-slate-500 text-[10px] font-black uppercase tracking-widest">
               <th className="px-6 py-4">Data</th>
               <th className="px-6 py-4">Descrição</th>
               <th className="px-6 py-4">Categoria</th>
-              <th className="px-6 py-4">Tipo/Natureza</th>
+              <th className="px-6 py-4">Tipo</th>
               <th className="px-6 py-4 text-right">Valor</th>
               <th className="px-6 py-4 text-center">Ações</th>
             </tr>
@@ -73,35 +68,41 @@ const TransactionList: React.FC<Props> = ({ transactions, categories, onDelete }
               const category = categories.find(c => c.id === t.categoryId);
               return (
                 <tr key={t.id} className="hover:bg-slate-50/80 transition-colors group">
-                  <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
+                  <td className="px-6 py-4 text-sm text-slate-500 whitespace-nowrap font-medium">
                     {formatDate(t.date)}
                   </td>
                   <td className="px-6 py-4">
-                    <p className="font-semibold text-slate-800 text-sm">{t.description}</p>
+                    <p className="font-bold text-slate-800 text-sm">{t.description}</p>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" style={{backgroundColor: `${category?.color}20`, color: category?.color}}>
+                    <span 
+                      className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tight shadow-sm border border-white" 
+                      style={{ 
+                        backgroundColor: `${category?.color || '#cbd5e1'}22`, 
+                        color: category?.color || '#64748b' 
+                      }}
+                    >
                       {category?.name || 'Indefinido'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col gap-0.5">
-                      <div className={`flex items-center space-x-1 text-xs font-bold ${t.type === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      <div className={`flex items-center space-x-1 text-[10px] font-black tracking-tighter ${t.type === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}>
                         {t.type === 'INCOME' ? <ArrowUpCircle size={14} /> : <ArrowDownCircle size={14} />}
                         <span>{t.type === 'INCOME' ? 'RECEITA' : 'DESPESA'}</span>
                       </div>
                       {t.nature && (
-                        <span className="text-[10px] text-slate-400 font-bold uppercase">{t.nature === 'FIXED' ? 'Fixa' : 'Variável'}</span>
+                        <span className="text-[9px] text-slate-400 font-bold uppercase">{t.nature === 'FIXED' ? 'Fixa' : 'Variável'}</span>
                       )}
                     </div>
                   </td>
-                  <td className={`px-6 py-4 text-sm font-bold text-right whitespace-nowrap ${t.type === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  <td className={`px-6 py-4 text-sm font-black text-right whitespace-nowrap ${t.type === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}>
                     {t.type === 'INCOME' ? '+' : '-'} {formatCurrency(t.amount)}
                   </td>
                   <td className="px-6 py-4 text-center">
                     <button 
                       onClick={() => onDelete(t.id)}
-                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                      className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
                     >
                       <Trash2 size={18} />
                     </button>
@@ -110,12 +111,10 @@ const TransactionList: React.FC<Props> = ({ transactions, categories, onDelete }
               );
             }) : (
               <tr>
-                <td colSpan={6} className="px-6 py-20 text-center">
-                  <div className="flex flex-col items-center justify-center space-y-3">
-                    <div className="p-4 bg-slate-100 rounded-full text-slate-400">
-                      <Filter size={48} />
-                    </div>
-                    <p className="text-slate-500 font-medium">Nenhuma transação encontrada.</p>
+                <td colSpan={6} className="px-6 py-24 text-center">
+                  <div className="flex flex-col items-center justify-center space-y-3 opacity-30">
+                    <Filter size={64} />
+                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Sem lançamentos registrados</p>
                   </div>
                 </td>
               </tr>
