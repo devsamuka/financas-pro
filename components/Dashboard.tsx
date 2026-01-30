@@ -60,8 +60,8 @@ const Dashboard: React.FC<Props> = ({ transactions, categories, goals }) => {
       .filter(t => t.type === 'EXPENSE')
       .forEach(t => {
         const cat = categories.find(c => c.id === t.categoryId);
-        const name = cat ? cat.name : 'Outros';
-        const color = cat ? cat.color : '#cbd5e1'; // Fallback se não encontrar categoria
+        const name = cat ? cat.name : 'Indefinido';
+        const color = cat ? cat.color : '#cbd5e1';
         
         if (!expensesByCategory[name]) {
           expensesByCategory[name] = { amount: 0, color: color };
@@ -69,11 +69,13 @@ const Dashboard: React.FC<Props> = ({ transactions, categories, goals }) => {
         expensesByCategory[name].amount += t.amount;
       });
     
-    return Object.entries(expensesByCategory).map(([name, data]) => ({ 
-      name, 
-      value: data.amount,
-      color: data.color 
-    }));
+    return Object.entries(expensesByCategory)
+      .map(([name, data]) => ({ 
+        name, 
+        value: data.amount,
+        color: data.color 
+      }))
+      .sort((a, b) => b.value - a.value);
   }, [transactions, categories]);
 
   const barData = useMemo(() => {
@@ -125,7 +127,7 @@ const Dashboard: React.FC<Props> = ({ transactions, categories, goals }) => {
               <TrendingUp size={20} className="text-indigo-600" />
               Comparativo Financeiro
             </h3>
-            <div className="h-[300px] w-full relative overflow-hidden min-h-[300px]">
+            <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -174,15 +176,15 @@ const Dashboard: React.FC<Props> = ({ transactions, categories, goals }) => {
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <h3 className="text-lg font-bold text-slate-800 mb-4">Despesas p/ Categoria</h3>
-            <div className="h-[260px] w-full relative overflow-hidden min-h-[260px]">
+            <div className="h-[300px] w-full">
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={pieData}
                       innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
+                      outerRadius={85}
+                      paddingAngle={4}
                       dataKey="value"
                       stroke="none"
                     >
@@ -194,7 +196,11 @@ const Dashboard: React.FC<Props> = ({ transactions, categories, goals }) => {
                       formatter={(value: number) => [formatCurrency(value), 'Gasto']}
                       contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'}}
                     />
-                    <Legend verticalAlign="bottom" height={36}/>
+                    <Legend 
+                      verticalAlign="bottom" 
+                      iconType="circle"
+                      wrapperStyle={{fontSize: '12px', paddingTop: '10px'}}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
@@ -223,7 +229,6 @@ const Dashboard: React.FC<Props> = ({ transactions, categories, goals }) => {
                       <div className="h-1.5 w-full bg-indigo-400/40 rounded-full overflow-hidden">
                         <div className="h-full bg-white rounded-full transition-all duration-1000" style={{width: `${progress}%`}} />
                       </div>
-                      <p className="text-[10px] text-indigo-100">Faltam {getDaysRemaining(goal.deadline)} dias</p>
                     </div>
                   );
                 })}
