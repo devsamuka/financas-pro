@@ -7,6 +7,7 @@ export interface Category {
   name: string;
   type: TransactionType;
   color: string;
+  user_id?: string;
 }
 
 export interface Transaction {
@@ -16,7 +17,7 @@ export interface Transaction {
   date: string;
   type: TransactionType;
   categoryId: string;
-  nature?: ExpenseNature; // Only for expenses
+  nature?: ExpenseNature;
 }
 
 export interface FinancialGoal {
@@ -25,15 +26,6 @@ export interface FinancialGoal {
   targetAmount: number;
   currentAmount: number;
   deadline: string;
-}
-
-export interface AppUser {
-  id: string;
-  username: string;
-  email: string;
-  full_name: string;
-  password?: string;
-  created_at?: string;
 }
 
 export interface FinancialSummary {
