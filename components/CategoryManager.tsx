@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Settings, Plus, Trash2, Tag, Palette } from 'lucide-react';
+import { Settings, Plus, Trash2, Tag, Palette, Hash } from 'lucide-react';
 import { Category, TransactionType } from '../types';
 
 interface Props {
@@ -12,7 +12,7 @@ interface Props {
 const CategoryManager: React.FC<Props> = ({ categories, onAdd, onDelete }) => {
   const [name, setName] = useState('');
   const [type, setType] = useState<TransactionType>('EXPENSE');
-  const [color, setColor] = useState('#6366f1'); // Cor padrão (Indigo 500)
+  const [color, setColor] = useState('#6366f1'); // Default: Indigo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,9 +26,10 @@ const CategoryManager: React.FC<Props> = ({ categories, onAdd, onDelete }) => {
       {/* Formulário de Criação */}
       <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm h-fit">
         <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-          <Palette className="text-indigo-600" />
-          Configurar Categoria
+          <Palette className="text-indigo-600" size={24} />
+          Personalizar Categoria
         </h3>
+        
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
             <div>
@@ -44,7 +45,7 @@ const CategoryManager: React.FC<Props> = ({ categories, onAdd, onDelete }) => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tipo de Fluxo</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Fluxo Financeiro</label>
               <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"
@@ -64,19 +65,30 @@ const CategoryManager: React.FC<Props> = ({ categories, onAdd, onDelete }) => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cor de Identificação</label>
-              <div className="flex items-center gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                <input 
-                  type="color" 
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  className="w-12 h-12 bg-transparent cursor-pointer rounded-lg overflow-hidden border-none"
-                />
-                <div className="flex-1">
-                  <p className="text-sm font-mono text-slate-600 uppercase font-bold">{color}</p>
-                  <p className="text-[10px] text-slate-400">Clique no ícone para abrir o seletor</p>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Seletor de Espectro (Cor)</label>
+              <div className="flex items-center gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-slate-300 transition-all">
+                <div className="relative w-14 h-14 shrink-0">
+                  <input 
+                    type="color" 
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <div 
+                    className="w-full h-full rounded-xl shadow-inner border-2 border-white ring-1 ring-slate-200 flex items-center justify-center text-white"
+                    style={{ backgroundColor: color }}
+                  >
+                    <Palette size={20} className="drop-shadow-sm" />
+                  </div>
                 </div>
-                <div className="w-8 h-8 rounded-full shadow-inner border border-white" style={{ backgroundColor: color }} />
+                
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-1 text-slate-600 font-mono font-bold">
+                    <Hash size={14} className="text-slate-400" />
+                    <span className="uppercase">{color.replace('#', '')}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-medium">Clique no quadrado para escolher qualquer cor no espectro.</p>
+                </div>
               </div>
             </div>
           </div>
@@ -86,52 +98,56 @@ const CategoryManager: React.FC<Props> = ({ categories, onAdd, onDelete }) => {
             className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl shadow-lg hover:bg-slate-800 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
           >
             <Plus size={20} />
-            Criar Categoria
+            Adicionar Categoria
           </button>
         </form>
       </div>
 
-      {/* Lista de Categorias Ativas */}
+      {/* Lista Visual */}
       <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
             <Tag className="text-indigo-600" />
-            Categorias
+            Minhas Categorias
           </h3>
-          <span className="px-2 py-1 bg-slate-100 rounded text-[10px] font-bold text-slate-500 uppercase">{categories.length} Total</span>
+          <span className="bg-indigo-50 text-indigo-600 text-[10px] font-black px-2 py-1 rounded-md uppercase">
+            {categories.length} Itens
+          </span>
         </div>
         
-        <div className="space-y-3 flex-1 overflow-y-auto pr-2" style={{ maxHeight: '520px' }}>
+        <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar" style={{ maxHeight: '530px' }}>
           {categories.length > 0 ? categories.map((cat) => (
-            <div key={cat.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 group hover:border-slate-300 transition-all">
+            <div key={cat.id} className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-100 shadow-sm group hover:border-slate-300 hover:shadow-md transition-all">
               <div className="flex items-center gap-4">
                 <div 
-                  className="w-10 h-10 rounded-xl shadow-sm border-2 border-white flex items-center justify-center text-white" 
+                  className="w-11 h-11 rounded-xl flex items-center justify-center text-white shadow-sm" 
                   style={{ backgroundColor: cat.color }}
                 >
-                  <Tag size={18} />
+                  <Tag size={20} />
                 </div>
                 <div>
-                  <p className="font-bold text-slate-800">{cat.name}</p>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-black uppercase tracking-wider ${cat.type === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  <p className="font-bold text-slate-800 leading-tight">{cat.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className={`text-[10px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded ${cat.type === 'INCOME' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
                       {cat.type === 'INCOME' ? 'Receita' : 'Despesa'}
                     </span>
-                    <span className="text-[10px] text-slate-300 font-mono">{cat.color}</span>
+                    <span className="text-[10px] font-mono text-slate-400 uppercase">{cat.color}</span>
                   </div>
                 </div>
               </div>
               <button 
                 onClick={() => onDelete(cat.id)}
-                className="p-2 text-slate-300 hover:text-rose-600 hover:bg-white rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                title="Excluir Categoria"
+                className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
               >
                 <Trash2 size={18} />
               </button>
             </div>
           )) : (
-            <div className="text-center py-10 text-slate-400 italic">
-              Nenhuma categoria personalizada encontrada.
+            <div className="text-center py-16">
+              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                <Tag size={32} />
+              </div>
+              <p className="text-slate-400 text-sm font-medium">Nenhuma categoria configurada ainda.</p>
             </div>
           )}
         </div>
